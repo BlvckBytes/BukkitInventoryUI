@@ -81,6 +81,15 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
   }
 
   private void setItem(int slot, ItemStack item) {
+    if (!isRegistered()) {
+      try {
+        throw new IllegalStateException("An unregistered UI (" + getClass() + ") tried to call setItem");
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return;
+    }
+
     if (slot < 0)
       return;
 
