@@ -91,6 +91,8 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
 
       setSlots(slotContent, slots);
     }
+
+    drawPagination(null);
   }
 
   public void setPageableSlots(Collection<DataBoundUISlot<PaginationDataType>> items) {
@@ -141,7 +143,9 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
 
   private void setCurrentPage(int slot, @Nullable EAnimationType animationType) {
     this.currentPage = slot;
-    this.drawPagination(animationType);
+
+    if (isRegistered())
+      this.drawPagination(animationType);
   }
 
   private EnumSet<EClickResultFlag> handlePreviousPageClick(UIInteraction action) {

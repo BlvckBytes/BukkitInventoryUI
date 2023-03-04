@@ -41,6 +41,8 @@ import java.util.function.Supplier;
 
 public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvider, Parameter extends AUIParameter<Provider>> {
 
+  private static final long COLLECT_TO_CURSOR_MAX_DELTA_MS = 400;
+
   protected final Inventory inventory;
   protected final InventoryAnimator animator;
   protected final Parameter parameter;
@@ -51,6 +53,8 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
   private final IFakeSlotCommunicator fakeSlotCommunicator;
   private final Map<Integer, ItemStack> fakeSlotItemCache;
   private final Map<Integer, UISlot> slots;
+
+  private long lastLeftClick;
 
   public AInventoryUI(IInventoryRegistry registry, Parameter parameter) {
     this.slots = new HashMap<>();
@@ -278,7 +282,37 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
     ItemStack fakeItem = fakeSlotItemCache.get(slot);
     if (fakeItem != null) {
       interaction.cancel.run();
-      fakeSlotCommunicator.setFakeSlot(parameter.viewer, slot, true, fakeItem);
+
+      boolean updatedAllSimilarSlots = false;
+
+      // Update all similar slots if a left click has been performed twice within the max delta
+      // time-span, in order to undo the clientside collect to cursor action
+      if (interaction.clickType.isLeftClick()) {
+        long now = System.currentTimeMillis();
+        long delta = now - lastLeftClick;
+
+        if (delta <= COLLECT_TO_CURSOR_MAX_DELTA_MS) {
+          for (Map.Entry<Integer, ItemStack> fakeSlotEntry : fakeSlotItemCache.entrySet()) {
+            ItemStack currentFakeItem = fakeSlotEntry.getValue();
+
+            if (!fakeItem.isSimilar(currentFakeItem))
+              continue;
+
+            fakeSlotCommunicator.setFakeSlot(parameter.viewer, fakeSlotEntry.getKey(), true, currentFakeItem);
+          }
+          updatedAllSimilarSlots = true;
+        }
+
+        lastLeftClick = now;
+      }
+
+      if (!updatedAllSimilarSlots)
+        fakeSlotCommunicator.setFakeSlot(parameter.viewer, slot, true, fakeItem);
+
+      // Also update the cursor, as it's not guaranteed that the server will clear the cursor after clicking
+      // on a slot with a fake item, as it doesn't know that it's there. Without this, the fake item is stuck
+      // to the cursor until the next interaction.
+      getViewer().setItemOnCursor(getViewer().getItemOnCursor());
     }
 
     UISlot targetSlot = slots.get(slot);
