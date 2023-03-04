@@ -9,8 +9,8 @@
     <version>0.1</version>
 
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -26,6 +26,17 @@
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.13-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>me.blvckbytes</groupId>
+            <artifactId>GPEEE</artifactId>
+            <version>0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>me.blvckbytes</groupId>
+            <artifactId>UtilityTypes</artifactId>
+            <version>0.1</version>
         </dependency>
         <dependency>
             <groupId>me.blvckbytes</groupId>
@@ -41,12 +52,6 @@
             <groupId>me.blvckbytes</groupId>
             <artifactId>BBReflect</artifactId>
             <version>0.1</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.spigotmc</groupId>
-                    <artifactId>spigot</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>me.blvckbytes</groupId>
