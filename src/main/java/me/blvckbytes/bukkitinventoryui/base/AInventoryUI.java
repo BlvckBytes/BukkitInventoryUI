@@ -30,6 +30,7 @@ import me.blvckbytes.bukkitevaluable.IItemBuildable;
 import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
 import me.blvckbytes.gpeee.interpreter.EvaluationEnvironmentBuilder;
 import me.blvckbytes.gpeee.interpreter.IEvaluationEnvironment;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryType;
@@ -43,6 +44,7 @@ import java.util.function.Supplier;
 public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvider, Parameter extends AUIParameter<Provider>> {
 
   private static final long COLLECT_TO_CURSOR_MAX_DELTA_MS = 400;
+  private static final ItemStack ITEM_AIR = new ItemStack(Material.AIR);
 
   protected final Inventory inventory;
   protected final InventoryAnimator animator;
@@ -279,12 +281,20 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
 
   public void handleItemRename(String name) {}
 
-  protected @Nullable ItemStack getFakeSlotItem(int slot) {
-    return this.fakeSlotItemCache.get(slot);
+  private @Nullable ItemStack getFakeSlotContent(int slot) {
+    if (!this.fakeSlotItemCache.containsKey(slot))
+      return null;
+
+    ItemStack item = this.fakeSlotItemCache.get(slot);
+
+    if (item == null)
+      return ITEM_AIR;
+
+    return item;
   }
 
   protected void blockWindowItems() {
-    fakeSlotCommunicator.blockWindowItems(parameter.viewer, this::getFakeSlotItem);
+    fakeSlotCommunicator.blockWindowItems(parameter.viewer, this::getFakeSlotContent);
   }
 
   protected void unblockWindowItems() {
