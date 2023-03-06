@@ -176,7 +176,7 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
 
   private IEvaluationEnvironment getPaginationEnvironment() {
     return new EvaluationEnvironmentBuilder()
-      .withLiveVariable("name", parameter.viewer::getName)
+      .withLiveVariable("viewer_name", parameter.viewer::getName)
       .withLiveVariable("current_page", () -> this.currentPage + 1)
       .withLiveVariable("page_size", () -> this.pageSize)
       .withLiveVariable("number_of_pages", () -> this.numberOfPages)

@@ -108,7 +108,7 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
 
   private IEvaluationEnvironment getTitleEnvironment() {
     return new EvaluationEnvironmentBuilder()
-      .withLiveVariable("name", parameter.viewer::getName)
+      .withLiveVariable("viewer_name", parameter.viewer::getName)
       .build();
   }
 }
