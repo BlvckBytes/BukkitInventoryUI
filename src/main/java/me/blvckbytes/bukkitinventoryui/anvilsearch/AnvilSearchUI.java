@@ -24,18 +24,15 @@
 
 package me.blvckbytes.bukkitinventoryui.anvilsearch;
 
-import me.blvckbytes.bbconfigmapper.ScalarType;
 import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
-import me.blvckbytes.bukkitinventoryui.base.DataBoundUISlot;
-import me.blvckbytes.bukkitinventoryui.base.EClickResultFlag;
-import me.blvckbytes.bukkitinventoryui.base.UIInteraction;
-import me.blvckbytes.bukkitinventoryui.base.UISlot;
+import me.blvckbytes.bukkitinventoryui.base.*;
 import me.blvckbytes.bukkitinventoryui.pageable.PageableInventoryUI;
 import me.blvckbytes.gpeee.interpreter.EvaluationEnvironmentBuilder;
 import me.blvckbytes.gpeee.interpreter.IEvaluationEnvironment;
 import org.bukkit.Bukkit;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -53,8 +50,8 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
   private long searchTextUpdate;
   private String searchText;
 
-  public AnvilSearchUI(IInventoryRegistry registry, AnvilSearchParameter<DataType> parameter) {
-    super(registry, parameter);
+  public AnvilSearchUI(IInventoryRegistry registry, AnvilSearchParameter<DataType> parameter, @Nullable AInventoryUI<?, ?> previousUi) {
+    super(registry, parameter, previousUi);
 
     this.searchText = " ";
     this.filterStates = new LinkedHashMap<>();
@@ -66,7 +63,6 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
 
   @Override
   protected Inventory createInventory() {
-    String title = parameter.provider.getTitle().asScalar(ScalarType.STRING, inventoryEnvironment);
     return Bukkit.createInventory(null, InventoryType.ANVIL, title);
   }
 

@@ -24,14 +24,12 @@
 
 package me.blvckbytes.bukkitinventoryui.singlechoice;
 
-import me.blvckbytes.bbconfigmapper.ScalarType;
 import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
 import me.blvckbytes.bukkitinventoryui.anvilsearch.AnvilSearchUI;
+import me.blvckbytes.bukkitinventoryui.base.AInventoryUI;
 import me.blvckbytes.bukkitinventoryui.base.DataBoundUISlot;
 import me.blvckbytes.bukkitinventoryui.base.UISlot;
 import me.blvckbytes.bukkitinventoryui.pageable.PageableInventoryUI;
-import me.blvckbytes.gpeee.interpreter.EvaluationEnvironmentBuilder;
-import me.blvckbytes.gpeee.interpreter.IEvaluationEnvironment;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
 import org.jetbrains.annotations.Nullable;
@@ -45,8 +43,8 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
   private static final String KEY_SEARCH = "search";
   private @Nullable AnvilSearchUI<DataType> searchUI;
 
-  public SingleChoiceUI(IInventoryRegistry registry, SingleChoiceParameter<DataType> parameter) {
-    super(registry, parameter);
+  public SingleChoiceUI(IInventoryRegistry registry, SingleChoiceParameter<DataType> parameter, @Nullable AInventoryUI<?, ?> previousUi) {
+    super(registry, parameter, previousUi);
   }
 
   @Override
@@ -63,7 +61,7 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
             // Create the search UI on demand
             if (this.searchUI == null) {
               this.searchUI = new AnvilSearchUI<>(
-                registry, parameter.makeAnvilSearchParameter(ui -> this.show())
+                registry, parameter.makeAnvilSearchParameter(ui -> this.show()), this
               );
             }
 
@@ -82,8 +80,6 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
 
   @Override
   protected Inventory createInventory() {
-    IEvaluationEnvironment titleEnvironment = getTitleEnvironment();
-    String title = parameter.provider.getTitle().asScalar(ScalarType.STRING, titleEnvironment);
     return Bukkit.createInventory(null, parameter.provider.getNumberOfRows() * 9, title);
   }
 
@@ -104,11 +100,5 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
     // Only invoke the update if the search UI is actually active
     if (this.searchUI != null && this.searchUI.isRegistered())
       this.searchUI.invokeFilterFunctionAndUpdatePageSlots();
-  }
-
-  private IEvaluationEnvironment getTitleEnvironment() {
-    return new EvaluationEnvironmentBuilder()
-      .withLiveVariable("viewer_name", parameter.viewer::getName)
-      .build();
   }
 }

@@ -24,6 +24,7 @@
 
 package me.blvckbytes.bukkitinventoryui.base;
 
+import me.blvckbytes.bbconfigmapper.ScalarType;
 import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
 import me.blvckbytes.bukkitevaluable.IItemBuildable;
 import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
@@ -49,6 +50,8 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
   protected final Map<String, Set<Integer>> slotContents;
   protected final IEvaluationEnvironment inventoryEnvironment;
   protected final IInventoryRegistry registry;
+  protected final @Nullable AInventoryUI<?, ?> previousUi;
+  protected final String title;
 
   private final IFakeSlotCommunicator fakeSlotCommunicator;
   private final Map<Integer, ItemStack> fakeSlotItemCache;
@@ -56,14 +59,19 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
 
   private long lastLeftClick;
 
-  public AInventoryUI(IInventoryRegistry registry, Parameter parameter) {
+  public AInventoryUI(IInventoryRegistry registry, Parameter parameter, @Nullable AInventoryUI<?, ?> previousUi) {
     this.slots = new HashMap<>();
 
+    this.previousUi = previousUi;
     this.registry = registry;
     this.fakeSlotCommunicator = registry.getFakeSlotCommunicator();
 
     this.parameter = parameter;
+
+    IEvaluationEnvironment titleEnvironment = getTitleEnvironment();
+    this.title = parameter.provider.getTitle().asScalar(ScalarType.STRING, titleEnvironment);
     this.inventory = createInventory();
+
     this.fakeSlotItemCache = new HashMap<>();
 
     this.animator = new InventoryAnimator(this::setItem);
@@ -73,15 +81,25 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
     if (inventorySize % 9 != 0)
       this.animator.setSlotOffset(inventorySize);
 
-    this.inventoryEnvironment = getInventoryEnvironment();
+    this.inventoryEnvironment = getInventoryEnvironment(titleEnvironment);
     this.slotContents = parameter.provider.getSlotContents(this.inventoryEnvironment);
   }
 
-  private IEvaluationEnvironment getInventoryEnvironment() {
+  private IEvaluationEnvironment getTitleEnvironment() {
+    return new EvaluationEnvironmentBuilder()
+      .withStaticVariable("viewer_name", this.parameter.viewer.getName())
+      .withStaticVariable("previous_title", this.previousUi == null ? "?" : this.previousUi.getTitle())
+      .build();
+  }
+
+  private IEvaluationEnvironment getInventoryEnvironment(IEvaluationEnvironment titleEnvironment) {
     return new EvaluationEnvironmentBuilder()
       .withStaticVariable("inventory_size", this.inventory.getSize())
-      .withStaticVariable("viewer_name", this.parameter.viewer.getName())
-      .build();
+      .build(titleEnvironment);
+  }
+
+  public String getTitle() {
+    return this.title;
   }
 
   private void setItem(int slot, ItemStack item) {
@@ -274,67 +292,73 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
   }
 
   public void handleInteraction(UIInteraction interaction) {
-    int slot = interaction.slot;
+    try {
+      int slot = interaction.slot;
 
-    // Re-send fake items on interaction, as they could disappear otherwise (seldom,
-    // but still). Happens if the server only clears the cursor but doesn't re-send the slot
-    // Fake slots also always need to be cancelled
-    ItemStack fakeItem = fakeSlotItemCache.get(slot);
-    if (fakeItem != null) {
-      interaction.cancel.run();
-
-      boolean updatedAllSimilarSlots = false;
-
-      // Update all similar slots if a left click has been performed twice within the max delta
-      // time-span, in order to undo the clientside collect to cursor action
-      if (interaction.clickType.isLeftClick()) {
-        long now = System.currentTimeMillis();
-        long delta = now - lastLeftClick;
-
-        if (delta <= COLLECT_TO_CURSOR_MAX_DELTA_MS) {
-          for (Map.Entry<Integer, ItemStack> fakeSlotEntry : fakeSlotItemCache.entrySet()) {
-            ItemStack currentFakeItem = fakeSlotEntry.getValue();
-
-            if (!fakeItem.isSimilar(currentFakeItem))
-              continue;
-
-            fakeSlotCommunicator.setFakeSlot(parameter.viewer, fakeSlotEntry.getKey(), true, currentFakeItem);
-          }
-          updatedAllSimilarSlots = true;
-        }
-
-        lastLeftClick = now;
-      }
-
-      if (!updatedAllSimilarSlots)
-        fakeSlotCommunicator.setFakeSlot(parameter.viewer, slot, true, fakeItem);
-
-      // Also update the cursor, as it's not guaranteed that the server will clear the cursor after clicking
-      // on a slot with a fake item, as it doesn't know that it's there. Without this, the fake item is stuck
-      // to the cursor until the next interaction.
-      getViewer().setItemOnCursor(getViewer().getItemOnCursor());
-    }
-
-    UISlot targetSlot = slots.get(slot);
-    if (targetSlot == null || targetSlot.interactionHandler == null) {
-      if (!isAllowedToInteractWithEmptySlot(interaction))
+      // Re-send fake items on interaction, as they could disappear otherwise (seldom,
+      // but still). Happens if the server only clears the cursor but doesn't re-send the slot
+      // Fake slots also always need to be cancelled
+      ItemStack fakeItem = fakeSlotItemCache.get(slot);
+      if (fakeItem != null) {
         interaction.cancel.run();
 
-      return;
-    }
+        boolean updatedAllSimilarSlots = false;
 
-    EnumSet<EClickResultFlag> resultFlags = targetSlot.interactionHandler.handle(interaction);
+        // Update all similar slots if a left click has been performed twice within the max delta
+        // time-span, in order to undo the clientside collect to cursor action
+        if (interaction.clickType.isLeftClick()) {
+          long now = System.currentTimeMillis();
+          long delta = now - lastLeftClick;
 
-    if (resultFlags == null) {
-      interaction.cancel.run();
-      return;
-    }
+          if (delta <= COLLECT_TO_CURSOR_MAX_DELTA_MS) {
+            for (Map.Entry<Integer, ItemStack> fakeSlotEntry : fakeSlotItemCache.entrySet()) {
+              ItemStack currentFakeItem = fakeSlotEntry.getValue();
 
-    for (EClickResultFlag resultFlag : resultFlags) {
-      if (resultFlag.isCancelling(interaction)) {
+              if (!fakeItem.isSimilar(currentFakeItem))
+                continue;
+
+              fakeSlotCommunicator.setFakeSlot(parameter.viewer, fakeSlotEntry.getKey(), true, currentFakeItem);
+            }
+            updatedAllSimilarSlots = true;
+          }
+
+          lastLeftClick = now;
+        }
+
+        if (!updatedAllSimilarSlots)
+          fakeSlotCommunicator.setFakeSlot(parameter.viewer, slot, true, fakeItem);
+
+        // Also update the cursor, as it's not guaranteed that the server will clear the cursor after clicking
+        // on a slot with a fake item, as it doesn't know that it's there. Without this, the fake item is stuck
+        // to the cursor until the next interaction.
+        getViewer().setItemOnCursor(getViewer().getItemOnCursor());
+      }
+
+      UISlot targetSlot = slots.get(slot);
+      if (targetSlot == null || targetSlot.interactionHandler == null) {
+        if (!isAllowedToInteractWithEmptySlot(interaction))
+          interaction.cancel.run();
+
+        return;
+      }
+
+      EnumSet<EClickResultFlag> resultFlags = targetSlot.interactionHandler.handle(interaction);
+
+      if (resultFlags == null) {
         interaction.cancel.run();
         return;
       }
+
+      for (EClickResultFlag resultFlag : resultFlags) {
+        if (resultFlag.isCancelling(interaction)) {
+          interaction.cancel.run();
+          return;
+        }
+      }
+    } catch (Throwable e) {
+      e.printStackTrace();
+      // If any exceptions occurred anywhere down the line, it's better to be safe than sorry
+      interaction.cancel.run();
     }
   }
 }

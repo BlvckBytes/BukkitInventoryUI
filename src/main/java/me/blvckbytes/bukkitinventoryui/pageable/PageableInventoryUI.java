@@ -51,8 +51,8 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
   private int currentPage;
   private int numberOfPages;
 
-  public PageableInventoryUI(IInventoryRegistry registry, Parameter parameter) {
-    super(registry, parameter);
+  public PageableInventoryUI(IInventoryRegistry registry, Parameter parameter, @Nullable AInventoryUI<?, ?> previousUi) {
+    super(registry, parameter, previousUi);
 
     this.pageableSlots = new ArrayList<>();
     this.paginationSlotIndices = parameter.provider.getPaginationSlots(inventoryEnvironment);
