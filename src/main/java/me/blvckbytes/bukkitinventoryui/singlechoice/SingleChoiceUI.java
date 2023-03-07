@@ -84,11 +84,6 @@ public abstract class SingleChoiceUI<DataType> extends PageableInventoryUI<ISing
   }
 
   @Override
-  public void handleClose() {
-    super.handleClose();
-  }
-
-  @Override
   protected boolean canInteractWithOwnInventory() {
     return true;
   }
