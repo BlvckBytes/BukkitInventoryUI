@@ -45,6 +45,7 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
 
   private static final long COLLECT_TO_CURSOR_MAX_DELTA_MS = 400;
   private static final ItemStack ITEM_AIR = new ItemStack(Material.AIR);
+  private static final int PLAYER_INVENTORY_SIZE = 9 * 4;
 
   protected final Inventory inventory;
   protected final InventoryAnimator animator;
@@ -239,29 +240,19 @@ public abstract class AInventoryUI<Provider extends IInventoryUIParameterProvide
   }
 
   private void updatePlayerInventory() {
-    if (fakeSlotItemCache.size() == 0)
-      return;
+    Inventory viewerInventory = parameter.viewer.getInventory();
 
-    // FIXME: Revise this...
+    // Definition: loop all player inventory slots from top left to bottom right in rows
+    for (int i = 0; i < PLAYER_INVENTORY_SIZE; i++) {
+      // The inventory starts counting slots in the hotbar (0-8) and then continues in the
+      // top left corner at 9. To compensate for this, add nine to i (0 lands at 9) and wrap around
+      int inventorySlot = (i + 9) % PLAYER_INVENTORY_SIZE;
+      ItemStack realItem = viewerInventory.getItem(inventorySlot);
 
-    Player viewer = parameter.viewer;
-    Inventory viewerInventory = viewer.getInventory();
-    int playerInventorySize = viewerInventory.getSize();
-    int inventorySize = inventory.getSize();
-
-    for (Integer fakeSlot : fakeSlotItemCache.keySet()) {
-      int inventorySlot = fakeSlot - inventorySize + 9;
-
-      if (inventorySlot < 9 || inventorySlot >= playerInventorySize + 9)
-        continue;
-
-      ItemStack realItem;
-      if (inventorySlot >= 36)
-        realItem = viewerInventory.getItem(inventorySlot - 36);
-      else
-        realItem = viewerInventory.getItem(inventorySlot);
-
-      fakeSlotCommunicator.setFakeSlot(parameter.viewer, inventorySlot, false, realItem);
+      // When modifying the player inventory itself, slot 0 marks the 2x2 crafting result
+      // slot, while 1-4 are the grid and 5-8 mark the armor slots. Thus, an offset of 9 is
+      // required to shift 0 into the top left of the inventory
+      fakeSlotCommunicator.setFakeSlot(parameter.viewer, i + 9, false, realItem);
     }
   }
 
