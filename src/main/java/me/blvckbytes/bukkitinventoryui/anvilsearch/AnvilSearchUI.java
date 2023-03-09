@@ -41,6 +41,7 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
   private static final String
     KEY_FILTER = "filter",
     KEY_BACK = "back",
+    KEY_RESULT = "resultItem",
     KEY_SEARCH_ITEM = "searchItem";
 
   private final Map<String, Boolean> filterStates;
@@ -84,6 +85,11 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
           slotContent = new UISlot(() -> parameter.provider.getSearchItem().build(inventoryEnvironment));
           break;
 
+        case KEY_RESULT:
+          IEvaluationEnvironment resultEnvironment = getResultEnvironment();
+          slotContent = new UISlot(() -> parameter.provider.getResultItem().build(resultEnvironment));
+          break;
+
         case KEY_BACK:
           if (parameter.backHandler != null) {
             slotContent = new UISlot(() -> parameter.provider.getBack().build(inventoryEnvironment), interaction -> {
@@ -115,6 +121,7 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
     synchronized (this) {
       this.searchText = name;
       this.searchTextUpdate = System.currentTimeMillis();
+      drawNamedSlot(KEY_RESULT);
     }
   }
 
@@ -163,6 +170,12 @@ public class AnvilSearchUI<DataType> extends PageableInventoryUI<IAnvilSearchPar
       searchTextUpdate = System.currentTimeMillis();
     }
     return null;
+  }
+
+  private IEvaluationEnvironment getResultEnvironment() {
+    return new EvaluationEnvironmentBuilder()
+      .withLiveVariable("search_text", () -> this.searchText.trim())
+      .build();
   }
 
   private IEvaluationEnvironment getFilterEnvironment() {
