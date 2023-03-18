@@ -22,17 +22,16 @@
  * SOFTWARE.
  */
 
-package me.blvckbytes.bukkitinventoryui;
+package me.blvckbytes.bukkitinventoryui.pageable;
 
-import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
+import me.blvckbytes.bukkitinventoryui.base.DataBoundUISlot;
 import me.blvckbytes.bukkitinventoryui.base.IInventoryUI;
+import me.blvckbytes.bukkitinventoryui.base.ITickHandler;
 
-public interface IInventoryRegistry {
+import java.util.Collection;
 
-  void registerUI(IInventoryUI ui);
+public interface IPageableInventoryUI<DataType> extends IInventoryUI, ITickHandler {
 
-  void unregisterUI(IInventoryUI ui);
-
-  IFakeSlotCommunicator getFakeSlotCommunicator();
+  void setPageableSlots(Collection<DataBoundUISlot<DataType>> items);
 
 }

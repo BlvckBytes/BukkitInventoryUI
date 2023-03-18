@@ -22,17 +22,20 @@
  * SOFTWARE.
  */
 
-package me.blvckbytes.bukkitinventoryui;
+package me.blvckbytes.bukkitinventoryui.base;
 
-import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
-import me.blvckbytes.bukkitinventoryui.base.IInventoryUI;
+import org.bukkit.inventory.ItemStack;
 
-public interface IInventoryRegistry {
+@FunctionalInterface
+public interface FSetSlotHandler {
 
-  void registerUI(IInventoryUI ui);
-
-  void unregisterUI(IInventoryUI ui);
-
-  IFakeSlotCommunicator getFakeSlotCommunicator();
+  /**
+   * Handles a call to set a specific slot
+   * @param slot Slot that's to be set
+   * @param item Item to set to that slot
+   * @return True if the call has been handled and is thus done, false
+   *         if this handler couldn't process the request
+   */
+  boolean apply(int slot, ItemStack item);
 
 }

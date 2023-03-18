@@ -24,78 +24,53 @@
 
 package me.blvckbytes.bukkitinventoryui.pageable;
 
-import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
 import me.blvckbytes.bukkitinventoryui.base.*;
 import me.blvckbytes.gpeee.interpreter.EvaluationEnvironmentBuilder;
 import me.blvckbytes.gpeee.interpreter.IEvaluationEnvironment;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public abstract class PageableInventoryUI<Provider extends IPageableParameterProvider, Parameter extends AUIParameter<Provider>, PaginationDataType> extends AInventoryUI<Provider, Parameter> {
+public class PageableInventoryUI<DataType> implements IPageableInventoryUI<DataType> {
 
   private static final String
     KEY_PREVIOUS_PAGE = "previousPage",
     KEY_CURRENT_PAGE = "currentPage",
     KEY_NEXT_PAGE = "nextPage";
 
+  private final InventoryAnimator animator;
+  private final IInventoryUI handle;
   private final List<Integer> paginationSlotIndices;
   private final int pageSize;
   private final long animationPeriod;
   private final boolean animationsEnabled;
 
-  private List<DataBoundUISlot<PaginationDataType>> pageableSlots;
+  private List<DataBoundUISlot<DataType>> pageableSlots;
   private int numberOfPageables;
   private boolean isFirstPageRender;
 
   private int currentPage;
   private int numberOfPages;
 
-  public PageableInventoryUI(IInventoryRegistry registry, Parameter parameter, @Nullable AInventoryUI<?, ?> previousUi) {
-    super(registry, parameter, previousUi);
+  private final IPageableParameterProvider parameterProvider;
 
+  public PageableInventoryUI(IPageableParameterProvider parameterProvider, IInventoryUI handle) {
     this.pageableSlots = new ArrayList<>();
-    this.paginationSlotIndices = parameter.provider.getPaginationSlots(inventoryEnvironment);
-    this.animationPeriod = parameter.provider.getAnimationPeriod();
+    this.handle = handle;
+    this.parameterProvider = parameterProvider;
+    this.paginationSlotIndices = parameterProvider.getPaginationSlots(handle.getInventoryEnvironment());
+    this.animationPeriod = parameterProvider.getAnimationPeriod();
+    this.animationsEnabled = parameterProvider.isAnimating();
     this.pageSize = this.paginationSlotIndices.size();
     this.isFirstPageRender = true;
-    this.animationsEnabled = parameter.provider.isAnimating();
+    this.animator = new InventoryAnimator(handle::setItem);
   }
 
   @Override
-  protected void decorate() {
-    super.decorate();
-
-    IEvaluationEnvironment paginationEnvironment = getPaginationEnvironment();
-
-    for (Map.Entry<String, Set<Integer>> contentEntry : slotContents.entrySet()) {
-      Set<Integer> slots = contentEntry.getValue();
-      UISlot slotContent = null;
-
-      switch (contentEntry.getKey()) {
-        case KEY_PREVIOUS_PAGE:
-          slotContent = new UISlot(() -> parameter.provider.getPreviousPage().build(paginationEnvironment), this::handlePreviousPageClick);
-          break;
-
-        case KEY_NEXT_PAGE:
-          slotContent = new UISlot(() -> parameter.provider.getNextPage().build(paginationEnvironment), this::handleNextPageClick);
-          break;
-
-        case KEY_CURRENT_PAGE:
-          slotContent = new UISlot(() -> parameter.provider.getCurrentPage().build(paginationEnvironment));
-          break;
-      }
-
-      if (slotContent == null)
-        continue;
-
-      setSlots(slotContent, slots);
-    }
-
-    drawPagination(null);
-  }
-
-  public void setPageableSlots(Collection<DataBoundUISlot<PaginationDataType>> items) {
+  public void setPageableSlots(Collection<DataBoundUISlot<DataType>> items) {
     this.pageableSlots = new ArrayList<>(items);
     this.numberOfPageables = this.pageableSlots.size();
 
@@ -105,6 +80,88 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
       this.numberOfPages = (int) Math.ceil(this.numberOfPageables / (float) this.pageSize);
 
     setCurrentPage(0, null);
+  }
+
+  public void setSlotOffset(int offset) {
+    this.animator.setSlotOffset(offset);
+  }
+
+  @Override
+  public void handleTick(long time) {
+    if (time % animationPeriod == 0)
+      this.animator.tick();
+  }
+
+  @Override
+  public void setSlotById(int slot, @Nullable UISlot value) {
+    this.handle.setSlotById(slot, value);
+  }
+
+  @Override
+  public void setSlotByName(String name, UISlot value) {
+    this.handle.setSlotByName(name, value);
+  }
+
+  @Override
+  public void drawSlotById(int slot) {
+    this.handle.drawSlotById(slot);
+  }
+
+  @Override
+  public void drawSlotByName(String name) {
+    this.handle.drawSlotByName(name);
+  }
+
+  @Override
+  public void setItem(int slot, ItemStack item) {
+    this.handle.setItem(slot, item);
+  }
+
+  @Override
+  public @Nullable ItemStack getItem(int slot) {
+    return this.handle.getItem(slot);
+  }
+
+  @Override
+  public void handleInteraction(UIInteraction interaction) {
+    this.animator.fastForward();
+    this.handle.handleInteraction(interaction);
+  }
+
+  @Override
+  public void handleClose() {
+    this.handle.handleClose();
+  }
+
+  @Override
+  public void show() {
+    this.handle.show();
+    this.setPaginationSlots();
+  }
+
+  @Override
+  public void close() {
+    this.handle.close();
+  }
+
+  @Override
+  public Inventory getInventory() {
+    return this.handle.getInventory();
+  }
+
+  @Override
+  public Player getViewer() {
+    return this.handle.getViewer();
+  }
+
+  @Override
+  public IEvaluationEnvironment getInventoryEnvironment() {
+    return this.handle.getInventoryEnvironment();
+  }
+
+  @Override
+  public boolean isOpen() {
+    return this.handle.isOpen();
   }
 
   private void drawCurrentPage() {
@@ -119,33 +176,31 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
       else
         slotValue = pageableSlots.get(pageableSlotsIndex);
 
-      setSlot(slot, slotValue);
-      drawSlot(slot);
+      setSlotById(slot, slotValue);
+      drawSlotById(slot);
     }
   }
 
   private void drawPagination(@Nullable EAnimationType animationType) {
-    int inventorySize = inventory.getSize() + 9 * 4;
+    int inventorySize = handle.getInventory().getSize() + 9 * 4;
 
     if (animationsEnabled)
-      animator.saveLayout(inventorySize, this::getItem);
+      animator.saveLayout(inventorySize, this.handle::getItem);
 
     this.drawCurrentPage();
-    this.drawNamedSlot(KEY_PREVIOUS_PAGE);
-    this.drawNamedSlot(KEY_CURRENT_PAGE);
-    this.drawNamedSlot(KEY_NEXT_PAGE);
+    this.handle.drawSlotByName(KEY_PREVIOUS_PAGE);
+    this.handle.drawSlotByName(KEY_CURRENT_PAGE);
+    this.handle.drawSlotByName(KEY_NEXT_PAGE);
 
     if (animationsEnabled && !isFirstPageRender && animationType != null)
-      animator.animateTo(animationType, paginationSlotIndices, inventorySize, this::getItem);
+      animator.animateTo(animationType, paginationSlotIndices, inventorySize, this.handle::getItem);
 
     isFirstPageRender = false;
   }
 
   private void setCurrentPage(int slot, @Nullable EAnimationType animationType) {
     this.currentPage = slot;
-
-    if (isRegistered())
-      this.drawPagination(animationType);
+    this.drawPagination(animationType);
   }
 
   private EnumSet<EClickResultFlag> handlePreviousPageClick(UIInteraction action) {
@@ -176,7 +231,7 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
 
   private IEvaluationEnvironment getPaginationEnvironment() {
     return new EvaluationEnvironmentBuilder()
-      .withLiveVariable("viewer_name", parameter.viewer::getName)
+      .withLiveVariable("viewer_name", getViewer()::getName)
       .withLiveVariable("current_page", () -> this.currentPage + 1)
       .withLiveVariable("page_size", () -> this.pageSize)
       .withLiveVariable("number_of_pages", () -> this.numberOfPages)
@@ -184,15 +239,13 @@ public abstract class PageableInventoryUI<Provider extends IPageableParameterPro
       .build();
   }
 
-  @Override
-  public void handleTick(long time) {
-    if (time % animationPeriod == 0)
-      this.animator.tick();
-  }
+  private void setPaginationSlots() {
+    IEvaluationEnvironment paginationEnvironment = getPaginationEnvironment();
 
-  @Override
-  public void handleInteraction(UIInteraction interaction) {
-    this.animator.fastForward();
-    super.handleInteraction(interaction);
+    handle.setSlotByName(KEY_PREVIOUS_PAGE, new UISlot(() -> parameterProvider.getPreviousPage().build(paginationEnvironment), this::handlePreviousPageClick));
+    handle.setSlotByName(KEY_NEXT_PAGE, new UISlot(() -> parameterProvider.getNextPage().build(paginationEnvironment), this::handleNextPageClick));
+    handle.setSlotByName(KEY_CURRENT_PAGE, new UISlot(() -> parameterProvider.getCurrentPage().build(paginationEnvironment)));
+
+    drawPagination(null);
   }
 }

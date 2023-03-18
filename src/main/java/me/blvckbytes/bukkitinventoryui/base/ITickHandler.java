@@ -22,17 +22,10 @@
  * SOFTWARE.
  */
 
-package me.blvckbytes.bukkitinventoryui;
+package me.blvckbytes.bukkitinventoryui.base;
 
-import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
-import me.blvckbytes.bukkitinventoryui.base.IInventoryUI;
+public interface ITickHandler {
 
-public interface IInventoryRegistry {
-
-  void registerUI(IInventoryUI ui);
-
-  void unregisterUI(IInventoryUI ui);
-
-  IFakeSlotCommunicator getFakeSlotCommunicator();
+  void handleTick(long time);
 
 }

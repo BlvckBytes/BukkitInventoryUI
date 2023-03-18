@@ -28,9 +28,7 @@ import me.blvckbytes.autowirer.ICleanable;
 import me.blvckbytes.autowirer.IInitializable;
 import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
 import me.blvckbytes.bbreflect.packets.communicator.IItemNameCommunicator;
-import me.blvckbytes.bukkitinventoryui.base.AInventoryUI;
-import me.blvckbytes.bukkitinventoryui.base.UIInteraction;
-import me.blvckbytes.utilitytypes.EIterationDecision;
+import me.blvckbytes.bukkitinventoryui.base.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,30 +41,39 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class InventoryRegistry implements IInventoryRegistry, IInitializable, ICleanable, Listener {
 
-  private final Map<Inventory, AInventoryUI<?, ?>> uiByInventory;
+  private final Map<Inventory, IInventoryUI> uiByInventory;
   private final IItemNameCommunicator itemNameCommunicator;
   private final IFakeSlotCommunicator fakeSlotCommunicator;
   private final Plugin plugin;
+  private final Logger logger;
   private @Nullable BukkitTask tickerTask;
 
-  public InventoryRegistry(Plugin plugin, IFakeSlotCommunicator fakeSlotCommunicator, IItemNameCommunicator itemNameCommunicator) {
+  public InventoryRegistry(
+    Plugin plugin,
+    Logger logger,
+    IFakeSlotCommunicator fakeSlotCommunicator,
+    IItemNameCommunicator itemNameCommunicator
+  ) {
+    this.plugin = plugin;
+    this.logger = logger;
     this.uiByInventory = new HashMap<>();
     this.fakeSlotCommunicator = fakeSlotCommunicator;
     this.itemNameCommunicator = itemNameCommunicator;
-    this.plugin = plugin;
   }
 
   @Override
   public void cleanup() {
     this.itemNameCommunicator.unregisterReceiver(this::onAnvilItemRename);
 
-    for (AInventoryUI<?, ?> inventory : uiByInventory.values())
+    for (IInventoryUI inventory : new ArrayList<>(uiByInventory.values()))
       inventory.close();
 
     if (this.tickerTask != null) {
@@ -77,7 +84,7 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
 
   @EventHandler
   public void onClose(InventoryCloseEvent event) {
-    AInventoryUI<?, ?> inventoryUI = uiByInventory.get(event.getInventory());
+    IInventoryUI inventoryUI = uiByInventory.get(event.getInventory());
 
     if (inventoryUI == null)
       return;
@@ -88,7 +95,7 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
   @EventHandler
   public void onDrag(InventoryDragEvent event) {
     Inventory topInventory = event.getView().getTopInventory();
-    AInventoryUI<?, ?> inventoryUI = uiByInventory.get(topInventory);
+    IInventoryUI inventoryUI = uiByInventory.get(topInventory);
 
     if (inventoryUI == null)
       return;
@@ -109,7 +116,7 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
       return;
 
     Inventory topInventory = event.getView().getTopInventory();
-    AInventoryUI<?, ?> inventoryUI = uiByInventory.get(topInventory);
+    IInventoryUI inventoryUI = uiByInventory.get(topInventory);
 
     if (inventoryUI == null)
       return;
@@ -119,59 +126,52 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
 
   private void onAnvilItemRename(Player player, String name) {
     Inventory topInventory = player.getOpenInventory().getTopInventory();
-    AInventoryUI<?, ?> inventoryUI = uiByInventory.get(topInventory);
+    IInventoryUI inventoryUI = uiByInventory.get(topInventory);
 
-    if (inventoryUI == null)
+    if (!(inventoryUI instanceof IAnvilItemRenameHandler))
       return;
 
-    inventoryUI.handleItemRename(name);
+    ((IAnvilItemRenameHandler) inventoryUI).handleAnvilItemRename(name);
   }
 
-  @Override
-  public void initialize() {
-    this.itemNameCommunicator.registerReceiver(this::onAnvilItemRename);
-
-    tickerTask = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+  private Runnable makeTickerRunnable() {
+    return new Runnable() {
 
       long time = 0;
 
       @Override
       public void run() {
-        for (AInventoryUI<?, ?> inventory : uiByInventory.values())
-          inventory.handleTick(time);
+        for (IInventoryUI inventoryUI : uiByInventory.values()) {
+          if (!(inventoryUI instanceof ITickHandler))
+            continue;
+
+          ((ITickHandler) inventoryUI).handleTick(time);
+        }
         ++time;
       }
-    }, 0L, 0L);
+    };
   }
 
   @Override
-  public void register(AInventoryUI<?, ?> ui) {
-    this.uiByInventory.put(ui.getInventory(), ui);
+  public void initialize() {
+    this.itemNameCommunicator.registerReceiver(this::onAnvilItemRename);
+    this.tickerTask = Bukkit.getScheduler().runTaskTimer(plugin, makeTickerRunnable(), 0L, 0L);
   }
 
   @Override
-  public void unregister(AInventoryUI<?, ?> ui) {
-    this.uiByInventory.remove(ui.getInventory());
+  public void registerUI(IInventoryUI ui) {
+    if (this.uiByInventory.put(ui.getInventory(), ui) != null)
+      this.logger.log(Level.SEVERE, "An inventory UI tried to register twice");
   }
 
   @Override
-  public boolean isRegistered(AInventoryUI<?, ?> ui) {
-    return this.uiByInventory.containsKey(ui.getInventory());
+  public void unregisterUI(IInventoryUI ui) {
+    if (this.uiByInventory.remove(ui.getInventory()) == null)
+      this.logger.log(Level.SEVERE, "An inventory UI tried to unregister twice");
   }
 
   @Override
   public IFakeSlotCommunicator getFakeSlotCommunicator() {
     return this.fakeSlotCommunicator;
-  }
-
-  @Override
-  public <T extends AInventoryUI<?, ?>> void forEachRegisteredOfType(Class<T> type, Function<T, EIterationDecision> consumer) {
-    for (AInventoryUI<?, ?> ui : this.uiByInventory.values()) {
-      if (!type.isInstance(ui))
-        continue;
-
-      if (consumer.apply(type.cast(ui)) == EIterationDecision.BREAK)
-        break;
-    }
   }
 }
