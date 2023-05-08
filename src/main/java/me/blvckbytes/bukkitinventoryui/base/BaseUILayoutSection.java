@@ -56,9 +56,6 @@ public class BaseUILayoutSection implements IConfigSection, IInventoryUIParamete
 
   private @CSAlways BukkitEvaluable title;
 
-  private @Nullable IItemBuildable fill;
-  private @Nullable IItemBuildable border;
-
   private boolean animating;
 
   private int animationPeriod;
@@ -74,13 +71,8 @@ public class BaseUILayoutSection implements IConfigSection, IInventoryUIParamete
 
   @Override
   public @Nullable Object defaultFor(Field field) {
-    String name = field.getName();
-    if (
-      IItemBuildable.class.isAssignableFrom(field.getType()) &&
-      (!name.equals("fill")) && (!name.equals("border"))
-    ) {
+    if (IItemBuildable.class.isAssignableFrom(field.getType()))
       return ITEM_NOT_CONFIGURED;
-    }
     return null;
   }
 
