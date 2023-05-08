@@ -38,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 
-public class SingleChoiceUI<DataType>  implements IPageableInventoryUI<DataType> {
+public class SingleChoiceUI<DataType extends Comparable<DataType>> implements IPageableInventoryUI<DataType> {
 
   private static final String KEY_SEARCH = "search";
 

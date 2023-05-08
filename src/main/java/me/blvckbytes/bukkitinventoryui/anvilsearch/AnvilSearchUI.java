@@ -24,6 +24,7 @@
 
 package me.blvckbytes.bukkitinventoryui.anvilsearch;
 
+import me.blvckbytes.bbconfigmapper.StringUtils;
 import me.blvckbytes.bukkitinventoryui.IInventoryRegistry;
 import me.blvckbytes.bukkitinventoryui.base.*;
 import me.blvckbytes.bukkitinventoryui.pageable.PageableInventoryUI;
@@ -37,8 +38,9 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class AnvilSearchUI<DataType> implements IInventoryUI, IAnvilItemRenameHandler, ITickHandler {
+public class AnvilSearchUI<DataType extends Comparable<DataType>> implements IInventoryUI, IAnvilItemRenameHandler, ITickHandler {
 
   private static final String
     KEY_FILTER = "filter",
@@ -76,8 +78,7 @@ public class AnvilSearchUI<DataType> implements IInventoryUI, IAnvilItemRenameHa
   }
 
   public void invokeFilterFunctionAndUpdatePageSlots() {
-    List<DataBoundUISlot<DataType>> slots = parameter.filterFunction.applyFilter(currentFilter, searchText);
-    this.handle.setPageableSlots(slots);
+    this.handle.setPageableSlots(applyFilter());
   }
 
   @Override
@@ -235,5 +236,104 @@ public class AnvilSearchUI<DataType> implements IInventoryUI, IAnvilItemRenameHa
 
   private Inventory createInventory(String title) {
     return Bukkit.createInventory(null, InventoryType.ANVIL, title);
+  }
+
+  /**
+   * Applies the filter algorithm to the parameter's slots list by making use of
+   * the current search text as well as the currently selected filter enum to extract
+   * the target words to search through
+   */
+  private List<DataBoundUISlot<DataType>> applyFilter() {
+    if (this.parameter.slots == null)
+      return new ArrayList<>();
+
+    if (this.searchText == null || StringUtils.isBlank(this.searchText))
+      return new ArrayList<>(this.parameter.slots);
+
+    String[] searchWords = this.searchText.trim().toLowerCase(Locale.ROOT).split(" ");
+    Map<DataBoundUISlot<DataType>, Integer> results = new HashMap<>();
+
+    for (DataBoundUISlot<DataType> slotItem : this.parameter.slots) {
+      String[] words = currentFilter.getWords().apply(slotItem.data);
+      int diff = calculateDifference(searchWords, words);
+
+      if (diff >= 0)
+        results.put(slotItem, diff);
+    }
+
+    return results.entrySet().stream()
+      .sorted(this::filterResultsComparator)
+      .map(Map.Entry::getKey)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Comparator function to compare two map entries of a filter result, which compares by
+   * difference value and only then invokes the data's own compare function
+   */
+  private int filterResultsComparator(Map.Entry<DataBoundUISlot<DataType>, Integer> a, Map.Entry<DataBoundUISlot<DataType>, Integer> b) {
+    int result;
+
+    if ((result = a.getValue().compareTo(b.getValue())) != 0)
+      return result;
+
+    return a.getKey().data.compareTo(b.getKey().data);
+  }
+
+  /**
+   * Calculates a number which represents the difference between all available words
+   * within the list of texts and the search words, where every text word may only match once.
+   * @param searchWords Words to match
+   * @param words Words to search in
+   * @return Difference, < 0 if there was no match for all words
+   */
+  private int calculateDifference(String[] searchWords, String[] words) {
+    // Create a copy to remove matched words from
+    int[] matchedWordFlags = new int[words.length / Integer.SIZE + 1];
+
+    // Iterate all words and count sum the total diff
+    int totalDiff = 0;
+    for (String word : searchWords) {
+
+      // Find the best match for the current word in all remaining words
+      int bestMatchDiff = Integer.MAX_VALUE;
+      int bestMatchFlagsIndex = -1;
+      int bestMatchFlagsMask = 0;
+
+      for (int wordIndex = 0; wordIndex < words.length; wordIndex++) {
+        int matchedFlagsIndex = wordIndex / Integer.SIZE;
+        int matchedFlagsMask = 1 << (wordIndex % Integer.SIZE);
+
+        if ((matchedWordFlags[matchedFlagsIndex] & matchedFlagsMask) != 0)
+          continue;
+
+        String availWord = words[wordIndex];
+
+        // Not containing the target word
+        int index = availWord.indexOf(word.toLowerCase());
+        if (index < 0)
+          continue;
+
+        // The difference is determined by how many other chars are padding the search word
+        int diff = availWord.length() - word.length();
+
+        // Compare and update the local best match
+        if (diff < bestMatchDiff) {
+          bestMatchDiff = diff;
+          bestMatchFlagsIndex = matchedFlagsIndex;
+          bestMatchFlagsMask = matchedFlagsMask;
+        }
+      }
+
+      // No match found for the current word, all words need to match, thus cancel
+      if (bestMatchFlagsIndex < 0)
+        return -1;
+
+      // Remove the matching word from the list and add it's difference to the total
+      matchedWordFlags[bestMatchFlagsIndex] |= bestMatchFlagsMask;
+      totalDiff += bestMatchDiff;
+    }
+
+    return totalDiff;
   }
 }

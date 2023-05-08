@@ -26,15 +26,17 @@ package me.blvckbytes.bukkitinventoryui.singlechoice;
 
 import me.blvckbytes.bukkitinventoryui.anvilsearch.*;
 import me.blvckbytes.bukkitinventoryui.base.AUIParameter;
+import me.blvckbytes.bukkitinventoryui.base.DataBoundUISlot;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 
-public class SingleChoiceParameter<T> extends AUIParameter<ISingleChoiceParameterProvider> {
+public class SingleChoiceParameter<T extends Comparable<T>> extends AUIParameter<ISingleChoiceParameterProvider> {
 
   public final ISearchFilterEnum<?, T> filterEnum;
-  public final FAnvilItemsFilter<T> filterFunction;
+  public final Collection<DataBoundUISlot<T>> slots;
   private final IAnvilSearchParameterProvider anvilSearchProvider;
 
   public SingleChoiceParameter(
@@ -42,15 +44,15 @@ public class SingleChoiceParameter<T> extends AUIParameter<ISingleChoiceParamete
     Player viewer,
     IAnvilSearchParameterProvider anvilSearchProvider,
     ISearchFilterEnum<?, T> filterEnum,
-    FAnvilItemsFilter<T> filterFunction
+    Collection<DataBoundUISlot<T>> slots
   ) {
     super(provider, viewer);
     this.filterEnum = filterEnum;
-    this.filterFunction = filterFunction;
+    this.slots = slots;
     this.anvilSearchProvider = anvilSearchProvider;
   }
 
   public AnvilSearchParameter<T> makeAnvilSearchParameter(@Nullable Consumer<AnvilSearchUI<T>> backHandler) {
-    return new AnvilSearchParameter<>(anvilSearchProvider, viewer, filterFunction, filterEnum, backHandler);
+    return new AnvilSearchParameter<>(anvilSearchProvider, viewer, slots, filterEnum, backHandler);
   }
 }

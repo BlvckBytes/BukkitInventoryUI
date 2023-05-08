@@ -25,16 +25,22 @@
 package me.blvckbytes.bukkitinventoryui.base;
 
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
-public class DataBoundUISlot<T> extends UISlot {
+public class DataBoundUISlot<T extends Comparable<T>> extends UISlot implements Comparable<DataBoundUISlot<T>> {
 
   public final T data;
 
   public DataBoundUISlot(Supplier<ItemStack> itemSupplier, @Nullable IInteractionHandler interactionHandler, T data) {
     super(itemSupplier, interactionHandler);
     this.data = data;
+  }
+
+  @Override
+  public int compareTo(@NotNull DataBoundUISlot<T> o) {
+    return data.compareTo(o.data);
   }
 }

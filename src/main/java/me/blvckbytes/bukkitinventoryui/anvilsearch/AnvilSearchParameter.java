@@ -25,27 +25,29 @@
 package me.blvckbytes.bukkitinventoryui.anvilsearch;
 
 import me.blvckbytes.bukkitinventoryui.base.AUIParameter;
+import me.blvckbytes.bukkitinventoryui.base.DataBoundUISlot;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 
-public class AnvilSearchParameter<T> extends AUIParameter<IAnvilSearchParameterProvider> {
+public class AnvilSearchParameter<T extends Comparable<T>> extends AUIParameter<IAnvilSearchParameterProvider> {
 
   public final ISearchFilterEnum<?, T> filterEnum;
-  public final FAnvilItemsFilter<T> filterFunction;
+  public final Collection<DataBoundUISlot<T>> slots;
   public final @Nullable Consumer<AnvilSearchUI<T>> backHandler;
 
   public AnvilSearchParameter(
     IAnvilSearchParameterProvider provider,
     Player viewer,
-    FAnvilItemsFilter<T> filterFunction,
+    Collection<DataBoundUISlot<T>> slots,
     ISearchFilterEnum<?, T> filterEnum,
     @Nullable Consumer<AnvilSearchUI<T>> backHandler
   ) {
     super(provider, viewer);
     this.filterEnum = filterEnum;
-    this.filterFunction = filterFunction;
+    this.slots = slots;
     this.backHandler = backHandler;
   }
 }

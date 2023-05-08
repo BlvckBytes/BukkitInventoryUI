@@ -30,7 +30,7 @@ import me.blvckbytes.bukkitinventoryui.base.ITickHandler;
 
 import java.util.Collection;
 
-public interface IPageableInventoryUI<DataType> extends IInventoryUI, ITickHandler {
+public interface IPageableInventoryUI<DataType extends Comparable<DataType>> extends IInventoryUI, ITickHandler {
 
   void setPageableSlots(Collection<DataBoundUISlot<DataType>> items);
 

@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class PageableInventoryUI<DataType> implements IPageableInventoryUI<DataType> {
+public class PageableInventoryUI<DataType extends Comparable<DataType>> implements IPageableInventoryUI<DataType> {
 
   private static final String
     KEY_PREVIOUS_PAGE = "previousPage",
