@@ -35,9 +35,10 @@ public interface ISearchFilterEnum<T extends Enum<?>, M> {
   ISearchFilterEnum<T, M>[] listValues();
 
   /**
-   * Get a list of texts to search through when provided a model's instance
+   * Get a sequence of normalized words (trimmed, lower-case) to search
+   * through when provided a model's instance
    */
-  Function<M, String[]> getTexts();
+  Function<M, String[]> getWords();
 
   /**
    * Get the next enum value in the enum's ordinal sequence
