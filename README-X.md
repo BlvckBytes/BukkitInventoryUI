@@ -5,12 +5,7 @@
 A collection of UI templates for rapid development, making use of [BukkitEvaluable](https://github.com/BlvckBytes/BukkitEvaluable)
 (take a look at it's section descriptions as well).
 
-## Table of Contents
-- [Configuration Sections](#configuration-sections)
-  - [Base UI Layout](#base-ui-layout)
-  - [Pageable UI](#pageable-ui)
-  - [Anvil Search UI](#anvil-search-ui)
-  - [Single Choice UI](#single-choice-ui)
+<!-- #toc -->
 
 ## Configuration Sections
 
