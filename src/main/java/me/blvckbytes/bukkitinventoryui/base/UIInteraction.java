@@ -29,6 +29,7 @@ import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
+import org.jetbrains.annotations.Nullable;
 
 public class UIInteraction {
 
@@ -63,13 +64,14 @@ public class UIInteraction {
     );
   }
 
-  public static UIInteraction fromClickEvent(IInventoryUI ui, InventoryClickEvent event) {
+  public static UIInteraction fromClickEvent(IInventoryUI ui, InventoryClickEvent event, @Nullable InventoryAction actionOverride) {
     return new UIInteraction(
       ui,
       event.getRawSlot(),
       event.getClickedInventory() == event.getView().getTopInventory(),
       () -> event.setCancelled(true),
-      event.getAction(), event.getClick()
+      actionOverride == null ? event.getAction() : actionOverride,
+      event.getClick()
     );
   }
 

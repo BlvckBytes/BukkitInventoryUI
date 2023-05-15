@@ -29,6 +29,7 @@ import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
 import me.blvckbytes.gpeee.interpreter.IEvaluationEnvironment;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -40,7 +41,6 @@ public class FakeItemUI implements IInventoryUI {
 
   private static final int PLAYER_INVENTORY_SIZE = 9 * 4;
   private static final ItemStack ITEM_AIR = new ItemStack(Material.AIR);
-  private static final long COLLECT_TO_CURSOR_MAX_DELTA_MS = 400;
 
   private final IInventoryUI handle;
 
@@ -48,8 +48,6 @@ public class FakeItemUI implements IInventoryUI {
   private final Map<Integer, ItemStack> fakeSlotItemCache;
   private final boolean requiresUpperInventoryFakeSlots;
   private final boolean usesPlayerInventory;
-
-  private long lastLeftClick;
 
   public FakeItemUI(IInventoryUI handle, IFakeSlotCommunicator fakeSlotCommunicator, boolean usesPlayerInventory) {
     this.handle = handle;
@@ -199,30 +197,9 @@ public class FakeItemUI implements IInventoryUI {
     if (fakeItem != null) {
       interaction.cancel.run();
 
-      boolean updatedAllSimilarSlots = false;
+      handleItemShiftMove(interaction, fakeItem, viewer);
 
-      // Update all similar slots if a left click has been performed twice within the max delta
-      // time-span, in order to undo the clientside collect to cursor action
-      if (interaction.clickType.isLeftClick()) {
-        long now = System.currentTimeMillis();
-        long delta = now - lastLeftClick;
-
-        if (delta <= COLLECT_TO_CURSOR_MAX_DELTA_MS) {
-          for (Map.Entry<Integer, ItemStack> fakeSlotEntry : fakeSlotItemCache.entrySet()) {
-            ItemStack currentFakeItem = fakeSlotEntry.getValue();
-
-            if (!fakeItem.isSimilar(currentFakeItem))
-              continue;
-
-            fakeSlotCommunicator.setFakeSlot(viewer, fakeSlotEntry.getKey(), true, currentFakeItem);
-          }
-          updatedAllSimilarSlots = true;
-        }
-
-        lastLeftClick = now;
-      }
-
-      if (!updatedAllSimilarSlots)
+      if (!handleCursorCollecting(interaction, fakeItem, viewer))
         fakeSlotCommunicator.setFakeSlot(viewer, slot, true, fakeItem);
 
       // Also update the cursor, as it's not guaranteed that the server will clear the cursor after clicking
@@ -230,6 +207,74 @@ public class FakeItemUI implements IInventoryUI {
       // to the cursor until the next interaction.
       viewer.setItemOnCursor(getViewer().getItemOnCursor());
     }
+  }
+
+  private void handleItemShiftMove(UIInteraction interaction, ItemStack fakeItem, Player viewer) {
+    if (interaction.action != InventoryAction.MOVE_TO_OTHER_INVENTORY)
+      return;
+
+    int slotStart;
+    int slotEnd;
+
+    if (interaction.wasTopInventory) {
+      // Shifted into the real, unused player inventory. Update the player's inventory.
+      if (!usesPlayerInventory) {
+        viewer.updateInventory();
+        return;
+      }
+
+      slotStart = getInventory().getSize();
+      slotEnd = slotStart + viewer.getInventory().getSize();
+    }
+
+    else {
+      slotStart = 0;
+      slotEnd = getInventory().getSize();
+    }
+
+    boolean foundSimilarFakeSlot = false;
+    int firstEmptySlot = -1;
+
+    for (int slot = slotStart; slot < slotEnd; slot++) {
+      ItemStack currentItem = getItem(slot);
+
+      if (currentItem == null || currentItem.getType() == Material.AIR) {
+        firstEmptySlot = slot;
+        continue;
+      }
+
+      if (currentItem.getAmount() >= currentItem.getMaxStackSize())
+        continue;
+
+      if (!currentItem.isSimilar(fakeItem))
+        continue;
+
+      // Update the slot where the fake item would have been
+      fakeSlotCommunicator.setFakeSlot(viewer, slot, true, currentItem);
+      foundSimilarFakeSlot = true;
+      break;
+    }
+
+    // No similar item found, make sure to clear the first empty slot again, as the
+    // fake item would occupy it until updated by the server otherwise
+    if (!foundSimilarFakeSlot && firstEmptySlot > 0)
+      setItem(firstEmptySlot, null);
+  }
+
+  private boolean handleCursorCollecting(UIInteraction interaction, ItemStack fakeItem, Player viewer) {
+    if (interaction.action != InventoryAction.COLLECT_TO_CURSOR)
+      return false;
+
+    for (Map.Entry<Integer, ItemStack> fakeSlotEntry : fakeSlotItemCache.entrySet()) {
+      ItemStack currentFakeItem = fakeSlotEntry.getValue();
+
+      if (!fakeItem.isSimilar(currentFakeItem))
+        continue;
+
+      fakeSlotCommunicator.setFakeSlot(viewer, fakeSlotEntry.getKey(), true, currentFakeItem);
+    }
+
+    return true;
   }
 
   public boolean handleSetFakeItem(int slot, ItemStack item) {

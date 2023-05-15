@@ -26,13 +26,16 @@ package me.blvckbytes.bukkitinventoryui;
 
 import me.blvckbytes.autowirer.ICleanable;
 import me.blvckbytes.autowirer.IInitializable;
+import me.blvckbytes.bbreflect.packets.communicator.EInventoryClickType;
 import me.blvckbytes.bbreflect.packets.communicator.IFakeSlotCommunicator;
 import me.blvckbytes.bbreflect.packets.communicator.IItemNameCommunicator;
 import me.blvckbytes.bukkitinventoryui.base.*;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -110,6 +113,13 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
 
   @EventHandler
   public void onClick(InventoryClickEvent event) {
+    HumanEntity clicker = event.getWhoClicked();
+
+    if (!(clicker instanceof Player))
+      return;
+
+    Player player = (Player) clicker;
+
     Inventory clickedInventory = event.getClickedInventory();
 
     if (clickedInventory == null)
@@ -121,7 +131,27 @@ public class InventoryRegistry implements IInventoryRegistry, IInitializable, IC
     if (inventoryUI == null)
       return;
 
-    inventoryUI.handleInteraction(UIInteraction.fromClickEvent(inventoryUI, event));
+    inventoryUI.handleInteraction(UIInteraction.fromClickEvent(inventoryUI, event, decideActionOverride(player)));
+  }
+
+  /**
+   * Decides a value which overrides the {@link InventoryAction} passed by the server, as the
+   * server obscures these on fake slot interactions.
+   */
+  private @Nullable InventoryAction decideActionOverride(Player player) {
+    EInventoryClickType lastClickType = fakeSlotCommunicator.getLastReceivedClickType(player);
+
+    if (lastClickType == null)
+      return null;
+
+    switch (lastClickType) {
+      case QUICK_MOVE:
+        return InventoryAction.MOVE_TO_OTHER_INVENTORY;
+      case PICKUP_ALL:
+        return InventoryAction.COLLECT_TO_CURSOR;
+      default:
+        return null;
+    }
   }
 
   private void onAnvilItemRename(Player player, String name) {
