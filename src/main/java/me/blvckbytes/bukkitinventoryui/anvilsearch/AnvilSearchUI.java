@@ -77,6 +77,12 @@ public class AnvilSearchUI<DataType extends Comparable<DataType>> implements IIn
     this.setupFilterStates();
   }
 
+  public boolean setSlots(List<DataBoundUISlot<DataType>> slots) {
+    boolean wasEqual = this.parameter.slots == slots;
+    this.parameter.slots = slots;
+    return !wasEqual;
+  }
+
   public void invokeFilterFunctionAndUpdatePageSlots() {
     this.handle.setPageableSlots(applyFilter());
   }

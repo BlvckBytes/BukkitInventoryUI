@@ -35,7 +35,7 @@ import java.util.function.Consumer;
 public class AnvilSearchParameter<T extends Comparable<T>> extends AUIParameter<IAnvilSearchParameterProvider> {
 
   public final ISearchFilterEnum<?, T> filterEnum;
-  public final Collection<DataBoundUISlot<T>> slots;
+  public Collection<DataBoundUISlot<T>> slots;
   public final @Nullable Consumer<AnvilSearchUI<T>> backHandler;
 
   public AnvilSearchParameter(
