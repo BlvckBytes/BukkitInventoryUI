@@ -53,6 +53,6 @@ public class SingleChoiceParameter<T extends Comparable<T>> extends AUIParameter
   }
 
   public AnvilSearchParameter<T> makeAnvilSearchParameter(@Nullable Consumer<AnvilSearchUI<T>> backHandler) {
-    return new AnvilSearchParameter<>(anvilSearchProvider, viewer, slots, filterEnum, backHandler);
+    return new AnvilSearchParameter<>(anvilSearchProvider, viewer, slots, filterEnum, backHandler, null);
   }
 }

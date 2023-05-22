@@ -46,7 +46,8 @@ public class AnvilSearchUI<DataType extends Comparable<DataType>> implements IIn
     KEY_FILTER = "filter",
     KEY_BACK = "back",
     KEY_RESULT = "resultItem",
-    KEY_SEARCH_ITEM = "searchItem";
+    KEY_SEARCH_ITEM = "searchItem",
+    KEY_NEW_BUTTON = "newButton";
 
   private final Map<String, Boolean> filterStates;
   private final int searchDebounceMs;
@@ -182,6 +183,9 @@ public class AnvilSearchUI<DataType extends Comparable<DataType>> implements IIn
   }
 
   private void setupFilterStates() {
+    if (parameter.filterEnum == null)
+      return;
+
     for (ISearchFilterEnum<?, DataType> searchFilter : parameter.filterEnum.listValues())
       filterStates.put(searchFilter.name(), searchFilter == currentFilter);
   }
@@ -216,14 +220,24 @@ public class AnvilSearchUI<DataType extends Comparable<DataType>> implements IIn
     IEvaluationEnvironment resultEnvironment = buildResultEnvironment();
     IEvaluationEnvironment inventoryEnvironment = handle.getInventoryEnvironment();
 
-    this.handle.setSlotByName(KEY_FILTER, new UISlot(() -> parameter.provider.getFilter().build(filterEnvironment), this::handleFilterClick));
-    this.handle.drawSlotByName(KEY_FILTER);
+    if (this.parameter.filterEnum != null) {
+      this.handle.setSlotByName(KEY_FILTER, new UISlot(() -> parameter.provider.getFilter().build(filterEnvironment), this::handleFilterClick));
+      this.handle.drawSlotByName(KEY_FILTER);
+    }
 
     this.handle.setSlotByName(KEY_SEARCH_ITEM, new UISlot(() -> parameter.provider.getSearchItem().build(filterEnvironment), this::handleFilterClick));
     this.handle.drawSlotByName(KEY_SEARCH_ITEM);
 
     this.handle.setSlotByName(KEY_RESULT, new UISlot(() -> parameter.provider.getResultItem().build(resultEnvironment), this::handleFilterClick));
     this.handle.drawSlotByName(KEY_RESULT);
+
+    if (parameter.newButtonHandler != null) {
+      this.handle.setSlotByName(KEY_NEW_BUTTON, new UISlot(() -> parameter.provider.getNewButton().build(inventoryEnvironment), interaction -> {
+        parameter.newButtonHandler.accept(this);
+        return null;
+      }));
+      this.handle.drawSlotByName(KEY_NEW_BUTTON);
+    }
 
     if (parameter.backHandler != null) {
       this.handle.setSlotByName(KEY_BACK, new UISlot(() -> parameter.provider.getBack().build(inventoryEnvironment), interaction -> {

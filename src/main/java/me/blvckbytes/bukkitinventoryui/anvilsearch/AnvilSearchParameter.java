@@ -34,20 +34,23 @@ import java.util.function.Consumer;
 
 public class AnvilSearchParameter<T extends Comparable<T>> extends AUIParameter<IAnvilSearchParameterProvider> {
 
-  public final ISearchFilterEnum<?, T> filterEnum;
+  public final @Nullable ISearchFilterEnum<?, T> filterEnum;
   public Collection<DataBoundUISlot<T>> slots;
   public final @Nullable Consumer<AnvilSearchUI<T>> backHandler;
+  public final @Nullable Consumer<AnvilSearchUI<T>> newButtonHandler;
 
   public AnvilSearchParameter(
     IAnvilSearchParameterProvider provider,
     Player viewer,
     Collection<DataBoundUISlot<T>> slots,
-    ISearchFilterEnum<?, T> filterEnum,
-    @Nullable Consumer<AnvilSearchUI<T>> backHandler
+    @Nullable ISearchFilterEnum<?, T> filterEnum,
+    @Nullable Consumer<AnvilSearchUI<T>> backHandler,
+    @Nullable Consumer<AnvilSearchUI<T>> newButtonHandler
   ) {
     super(provider, viewer);
     this.filterEnum = filterEnum;
     this.slots = slots;
     this.backHandler = backHandler;
+    this.newButtonHandler = newButtonHandler;
   }
 }

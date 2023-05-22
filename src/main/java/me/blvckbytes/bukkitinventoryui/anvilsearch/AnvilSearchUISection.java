@@ -36,6 +36,7 @@ public class AnvilSearchUISection extends PageableUISection implements IAnvilSea
   private IItemBuildable back;
   private IItemBuildable searchItem;
   private IItemBuildable resultItem;
+  private IItemBuildable newButton;
 
   private int searchDebounceTicks;
 
@@ -63,6 +64,11 @@ public class AnvilSearchUISection extends PageableUISection implements IAnvilSea
   @Override
   public IItemBuildable getBack() {
     return this.back;
+  }
+
+  @Override
+  public IItemBuildable getNewButton() {
+    return this.newButton;
   }
 
   @Override

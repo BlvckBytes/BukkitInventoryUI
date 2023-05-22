@@ -37,6 +37,8 @@ public interface IAnvilSearchParameterProvider extends IPageableParameterProvide
 
   IItemBuildable getBack();
 
+  IItemBuildable getNewButton();
+
   int getSearchDebounceTicks();
 
 }
